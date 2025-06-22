@@ -1,6 +1,7 @@
 // Authentication routes
 // This file defines the Hono router for authentication endpoints
-import { Hono } from 'hono'
+import { Hono } from 'hono';
+import { authHandler } from './auth.handler';
 import { HTTPException } from 'hono/http-exception'
 import { zodValidator } from '../../middleware/zod.validator'
 import { AuthErrors } from '../../middleware/error.handler'
@@ -80,4 +81,6 @@ auth.get('/health', (c) => {
   })
 })
 
-export { auth }
+auth.post('/verify', authHandler.verify);
+
+export { auth };

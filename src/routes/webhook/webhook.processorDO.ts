@@ -9,9 +9,10 @@ import {
   isTextMessage,
   MessageProcessingResult
 } from './webhook.schema';
-import { CtaUrlInteractiveObject, CtaUrlMessagePayload } from '../../core/whatsApp.schema';
-import { WhatsAppClient } from '../../core/whatsapp';
+import { CtaUrlInteractiveObject, CtaUrlMessagePayload } from '../../core/whatsapp/whatsApp.schema';
+import { WhatsAppClient } from '../../core/whatsapp/whatsapp';
 import { Env } from '../../bindings';
+import { findUserByPhone, createVerificationToken } from '../../core/auth/auth';
 
 
 
@@ -27,7 +28,7 @@ export class WebhookProcessor extends DurableObject {
   }
 
   async processWebhook(payload: WhatsAppWebhookPayload): Promise<MessageProcessingResult> {
-    console.log('📥 [DO] Recibiendo webhook payload en Durable Object');
+    console.log('🚀 [WebhookProcessorDO] Received webhook event.', JSON.stringify(payload, null, 2));
     return this.processMessage(payload);
   }
 
@@ -36,115 +37,133 @@ export class WebhookProcessor extends DurableObject {
   }
 
   private async processMessage(payload: WhatsAppWebhookPayload): Promise<MessageProcessingResult> {
+    console.log('➡️ [WebhookProcessorDO] Starting processMessage.', JSON.stringify(payload, null, 2));
+    try {
+        if (!isWhatsAppWebhookPayload(payload)) {
+            console.error('❌ [WebhookProcessorDO] Invalid WhatsApp webhook payload structure');
+            throw new Error('Invalid WhatsApp webhook payload structure');
+        }
+        console.log('✅ [WebhookProcessorDO] Payload structure validated.');
 
-      try {
-          // Validate payload structure
-          if (!isWhatsAppWebhookPayload(payload)) {
-              throw new Error('Invalid WhatsApp webhook payload structure');
-          }
+        const whatsAppClient = WhatsAppClient({
+          apiUrl: this.apiUrl,
+          token: this.env.WHATSAPP_API_TOKEN,
+        })
+          
+        const entry = payload.entry?.[0];
+        const change = entry?.changes?.[0];
+        
+        if (change?.field !== 'messages') {
+          console.warn('⚠️ [WebhookProcessorDO] Non-message event received, skipping processing.');
+          return { status: 'success', message: 'Non-message event processed' };
+        }
+        console.log('ℹ️ [WebhookProcessorDO] Message event detected.');
+        
+        const value = change.value as MessageValue;
+        const message = value?.messages?.[0];
+        const contact = value?.contacts?.[0];
+        
 
-          const whatsAppClient = WhatsAppClient({
-            apiUrl: this.apiUrl,
-            token: this.env.WHATSAPP_API_TOKEN,
-          })
+        if (!message || !contact) {
+            console.error('❌ [WebhookProcessorDO] Incomplete message data. Missing message or contact.');
+            throw new Error('Incomplete message data');
+        }
+
+        console.log(`🔄 [WebhookProcessorDO] Processing message ID: ${message.id} from ${contact.wa_id}`);
+        
+        await this.ctx.storage.put("processingStatus", {
+            status: "processing",
+            timestamp: new Date().toISOString(),
+            messageId: message.id,
+            from: contact.wa_id,
+            messageType: message.type
+        });
+
+        if (isTextMessage(message)) {
+            console.log(`💬 [WebhookProcessorDO] Processing text message. Body: "${message.text.body}"`);
+          
+            await whatsAppClient.markMessageAsRead(message.id);
+            await whatsAppClient.sendTypingIndicator(message.id);
+
+            const phoneNumber = cleanPhoneNumber(contact.wa_id);
+            console.log(`🔍 [WebhookProcessorDO] Searching for user with phone number: ${phoneNumber}`);
             
-          const entry = payload.entry?.[0];
-          const change = entry?.changes?.[0];
-          
-          // Check if this is a message change (not template status)
-          if (change?.field !== 'messages') {
-            console.log('⚠️ Non-message event received, skipping processing');
-            return { status: 'success', message: 'Non-message event processed' };
-          }
-          
-          const value = change.value as MessageValue;
-          const message = value?.messages?.[0];
-          const metadata = value?.metadata;
-          const contact = value?.contacts?.[0];
 
-          console.log('🔄 Durable Object processing webhook payload:', JSON.stringify(payload, null, 2));
-          
-          // Store processing status
-          await this.ctx.storage.put("processingStatus", {
-              status: "processing",
-              timestamp: new Date().toISOString(),
-              messageId: message?.id,
-              from: contact?.wa_id,
-              messageType: message?.type
-          });
-
-          // Process message if it's a text message
-          if (message && contact && isTextMessage(message)) {
-              console.log('📱 Processing text message from:', contact.wa_id);
-            
-              await whatsAppClient.markMessageAsRead(message.id);
-              await whatsAppClient.sendTypingIndicator(message.id);
-              
-              if (message.text.body.toLowerCase() === 'cta') {
-                await whatsAppClient.sendCtaUrlMessage(cleanPhoneNumber(contact.wa_id), {
-                  type: 'cta_url',
-                  header: {
-                    type: 'image',
-                    image: {
-                      link: 'https://www.luckyshrub.com/assets/lucky-shrub-banner-logo-v1.png'
-                    }
+            const singUpOrLogin = /create account|join/i.test(message.text.body);
+            console.log(`ℹ️ [WebhookProcessorDO] Create account intent detected: ${singUpOrLogin}`);
+            if (singUpOrLogin) {
+              console.log(`🆕 [WebhookProcessorDO] No user found. Creating verification token for: ${phoneNumber}`);
+              const user = await findUserByPhone({ env: this.env } as any, phoneNumber);
+              console.log("user", user);
+                const text = user?.id ?
+                    "Welcome back! 👋"
+                    :
+                    "Thank you for signing up!"
+             
+              const token = await createVerificationToken({ env: this.env } as any, phoneNumber);
+              console.log("token", token)
+              const verificationUrl = `https://webapp-unalana.leolicona-dev.workers.dev/verify?token=${token}`;
+              console.log(`🔗 [WebhookProcessorDO] Sending verification URL: ${verificationUrl}`);
+             
+              await whatsAppClient.sendCtaUrlMessage(phoneNumber, {
+                type: 'cta_url',
+               header: { type: 'image', image: { link: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/WhatsApp_test_message.jpg/2560px-WhatsApp_test_message.jpg' } },
+                
+                body: { text },
+                action: {
+                  name: 'cta_url',
+                  parameters: {
+                    display_text: 'Create Account',
+                    url: verificationUrl,
                   },
-                  body: {
-                    text: 'Tap the button below to see available dates.'
-                  },
-                  action: {
-                    name: 'cta_url',
-                    parameters: {
-                      display_text: 'See Dates',
-                      url: 'https://www.luckyshrub.com?clickID=kqDGWd24Q5TRwoEQTICY7W1JKoXvaZOXWAS7h1P76s0R7Paec4'
-                    }
-                  },
-                  footer: {
-                    text: 'Dates subject to change.'
+                },
+                footer: {
+                  text: 'Powered by OTPless'
+                }
+              }); 
+            } else {
+              console.log(`🤔 [WebhookProcessorDO] Intent not recognized. Sending fallback message to: ${phoneNumber}`);
+              await whatsAppClient.sendMessage(
+                  phoneNumber,
+                  {
+                      type: "text",
+                      text: {
+                          body: "I'm sorry, I didn't understand that. Please type 'create account' to begin."
+                      }
                   }
-                });
-              } else {
-                await whatsAppClient.sendMessage(
-                    cleanPhoneNumber(contact.wa_id),
-                    {
-                        type: "text",
-                        text: {
-                            body: message.text.body
-                        }
-                    }
-                );
-              }
-              
-              // Store successful processing result
-              await this.ctx.storage.put(`message:${message.id}`, {
-                  messageId: message.id,
-                  from: contact.wa_id,
-                  messageType: message.type,
-                  processedAt: new Date().toISOString(),
-                  status: 'completed'
-              });
-          }
-      
-          console.log('✅ Webhook processing completed successfully');
-          if (message) {
-            return { status: 'success', message: 'Webhook processed', messageId: message.id };
-          }
-          return { status: 'success', message: 'Webhook processed' }; 
-      } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          console.error('💥 [DO] Error procesando mensaje:', {
-              error: errorMessage,
-              payload: JSON.stringify(payload)
-          });
-          
-          await this.ctx.storage.put("processingStatus", {
-              status: "error",
-              timestamp: new Date().toISOString(),
-              error: errorMessage
-          });
+              );
+            }
+            
+            console.log(`💾 [WebhookProcessorDO] Storing successful processing result for message: ${message.id}`);
+            await this.ctx.storage.put(`message:${message.id}`, {
+                messageId: message.id,
+                from: contact.wa_id,
+                messageType: message.type,
+                processedAt: new Date().toISOString(),
+                status: 'completed'
+            });
+        } else {
+            console.warn(`🤷 [WebhookProcessorDO] Received non-text message type: ${message.type}. Skipping.`);
+        }
+    
+        console.log(`✅ [WebhookProcessorDO] Webhook processing completed successfully for message ID: ${message.id}`);
+        return { status: 'success', message: 'Webhook processed', messageId: message.id };
 
-          return { status: 'error', message: errorMessage };
-      }
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        console.error('💥 [WebhookProcessorDO] Error processing message:', {
+            error: errorMessage,
+            payload: JSON.stringify(payload)
+        });
+        
+        await this.ctx.storage.put("processingStatus", {
+            status: "error",
+            timestamp: new Date().toISOString(),
+            error: errorMessage
+        });
+
+        return { status: 'error', message: errorMessage };
+    }
   }
 }
 

@@ -1,4 +1,4 @@
-import { makeApiRequester } from './makeApiRequester';
+import { makeApiRequester } from '../makeApiRequester';
 import { 
   CtaUrlInteractiveObject, 
   CtaUrlMessagePayload, 

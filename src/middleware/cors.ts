@@ -84,4 +84,4 @@ export const corsConfig = {
 };
 
 // Pre-configured CORS middleware with default settings
-export const corsMiddleware = cors(corsConfig.default);
+export const corsMiddleware = cors(corsConfig.public);

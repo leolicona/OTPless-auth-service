@@ -22,7 +22,7 @@ app.use('*', securityHeaders())
 app.use('*', corsMiddleware)
 
 // Apply rate limiting to all routes
-app.use('*', rateLimitPresets.moderate)
+//app.use('*', rateLimitPresets.moderate)
 
 // Mount auth routes
 app.route('/auth', auth)

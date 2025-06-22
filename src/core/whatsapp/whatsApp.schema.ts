@@ -4,16 +4,43 @@ import { z } from 'zod';
 // INTERACTIVE MESSAGE SCHEMAS (CTA URL)
 // ============================================================================
 
-// Schema for the image in the header
-const CtaUrlHeaderImageSchema = z.object({
-  link: z.string().url(),
+// Schema for text header
+const CtaUrlTextHeaderSchema = z.object({
+  type: z.literal('text'),
+  text: z.string(),
 });
 
-// Schema for the header
-const CtaUrlHeaderSchema = z.object({
+// Schema for image header
+const CtaUrlImageHeaderSchema = z.object({
   type: z.literal('image'),
-  image: CtaUrlHeaderImageSchema,
+  image: z.object({
+    link: z.string().url(),
+  }),
 });
+
+// Schema for document header
+const CtaUrlDocumentHeaderSchema = z.object({
+  type: z.literal('document'),
+  document: z.object({
+    link: z.string().url(),
+  }),
+});
+
+// Schema for video header
+const CtaUrlVideoHeaderSchema = z.object({
+  type: z.literal('video'),
+  video: z.object({
+    link: z.string().url(),
+  }),
+});
+
+// Discriminated union for all header types
+const CtaUrlHeaderSchema = z.discriminatedUnion('type', [
+  CtaUrlTextHeaderSchema,
+  CtaUrlImageHeaderSchema,
+  CtaUrlDocumentHeaderSchema,
+  CtaUrlVideoHeaderSchema,
+]);
 
 // Schema for the body
 const CtaUrlBodySchema = z.object({
@@ -37,10 +64,10 @@ const CtaUrlFooterSchema = z.object({
   text: z.string(),
 });
 
-// Schema for the interactive object
+// Schema for the interactive object with optional header
 export const CtaUrlInteractiveObjectSchema = z.object({
   type: z.literal('cta_url'),
-  header: CtaUrlHeaderSchema,
+  header: CtaUrlHeaderSchema.optional(),
   body: CtaUrlBodySchema,
   action: CtaUrlActionSchema,
   footer: CtaUrlFooterSchema.optional(),

@@ -10,8 +10,11 @@
   "dependencies": {
     "@hono-rate-limiter/cloudflare": "^0.2.2",
     "@hono/zod-validator": "^0.7.0",
+    "drizzle-kit": "^0.31.1",
+    "drizzle-orm": "^0.44.2",
     "hono": "^4.7.11",
     "hono-rate-limiter": "^0.4.2",
+    "jose": "^6.0.11",
     "zod": "^3.25.67"
   },
   "devDependencies": {

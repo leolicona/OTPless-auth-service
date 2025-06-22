@@ -47,7 +47,7 @@ export const webhookHandlers = {
       if (change?.field !== 'messages') {
         return c.json({ success: true, message: 'Non-message event processed' })
       }
-      
+      console.log('✅ Received WhatsApp webhook event:', body)
       const messageValue = change.value as MessageValue
       const messageID = messageValue?.messages?.[0].id 
       if (!messageID) return c.json({ 

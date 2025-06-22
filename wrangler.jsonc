@@ -7,12 +7,12 @@
   //   "nodejs_compat"
   // ],
   // Environment variables for authentication
-  // "vars": {
-  //   "JWT_SECRET": "your-jwt-secret",
-  //   "OTPLESS_CLIENT_ID": "your-otpless-client-id",
-  //   "OTPLESS_CLIENT_SECRET": "your-otpless-client-secret",
-  //   "OTPLESS_API_URL": "https://api.otpless.app"
-  // },
+  "vars": {
+    "JWT_SECRET": "your-super-secret-and-long-jwt-secret-key",
+    "OTPLESS_CLIENT_ID": "your-otpless-client-id",
+    "OTPLESS_CLIENT_SECRET": "your-otpless-client-secret",
+    "OTPLESS_API_URL": "https://api.otpless.app"
+  },
   // KV namespace for session storage
   "kv_namespaces": [
     {
@@ -48,8 +48,9 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "whatsapp-auth-db",
-      "database_id": "3e0dd492-4db4-48ef-bca6-2d1d40ddf69f"
+      "database_name": "main-db",
+      "database_id": "3e0dd492-4db4-48ef-bca6-2d1d40ddf69f",
+      "migrations_dir": "migrations"
     }
   ],
   // Queue for background tasks (optional)

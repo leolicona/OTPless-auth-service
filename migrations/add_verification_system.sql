@@ -4,9 +4,6 @@ CREATE TABLE users (
   name TEXT,
   created_at INTEGER NOT NULL,
   last_login INTEGER NOT NULL,
-  auth_token TEXT,
-  refresh_token TEXT,
-  status TEXT NOT NULL DEFAULT 'pending'
 );
 
 CREATE TABLE sessions (
