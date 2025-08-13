@@ -89,7 +89,7 @@ export class WebhookProcessor extends DurableObject {
             console.log(`🔍 [WebhookProcessorDO] Searching for user with phone number: ${phoneNumber}`);
             
 
-            const singUpOrLogin = /create account|join/i.test(message.text.body);
+            const singUpOrLogin = /unirme|chatya/i.test(message.text.body);
             console.log(`ℹ️ [WebhookProcessorDO] Create account intent detected: ${singUpOrLogin}`);
             if (singUpOrLogin) {
               console.log(`🆕 [WebhookProcessorDO] No user found. Creating verification token for: ${phoneNumber}`);
@@ -105,6 +105,8 @@ export class WebhookProcessor extends DurableObject {
               const verificationUrl = `https://webapp-unalana.leolicona-dev.workers.dev/verify?token=${token}`;
               console.log(`🔗 [WebhookProcessorDO] Sending verification URL: ${verificationUrl}`);
              
+              const buttonText = user?.id ? 'Iniciar sesión' : 'Crear cuenta';
+             
               await whatsAppClient.sendCtaUrlMessage(phoneNumber, {
                 type: 'cta_url',
                header: { type: 'image', image: { link: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/WhatsApp_test_message.jpg/2560px-WhatsApp_test_message.jpg' } },
@@ -113,7 +115,7 @@ export class WebhookProcessor extends DurableObject {
                 action: {
                   name: 'cta_url',
                   parameters: {
-                    display_text: 'Create Account',
+                    display_text: buttonText,
                     url: verificationUrl,
                   },
                 },
@@ -128,7 +130,7 @@ export class WebhookProcessor extends DurableObject {
                   {
                       type: "text",
                       text: {
-                          body: "I'm sorry, I didn't understand that. Please type 'create account' to begin."
+                          body: "No entendí eso. Por favor escribe 'Quiero unirme a Chat Ya' para comenzar"
                       }
                   }
               );

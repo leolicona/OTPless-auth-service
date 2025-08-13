@@ -66,10 +66,10 @@ export const corsConfig = {
 
   // Development configuration
   development: {
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080'],
+    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080', 'https://bff-api.leolicona-dev.workers.dev'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['*'],
-    credentials: true,
+    credentials: false,
     maxAge: 0, // No caching in development
   },
 
@@ -84,4 +84,4 @@ export const corsConfig = {
 };
 
 // Pre-configured CORS middleware with default settings
-export const corsMiddleware = cors(corsConfig.public);
+export const corsMiddleware = cors(corsConfig.development);
