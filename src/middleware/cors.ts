@@ -66,7 +66,7 @@ export const corsConfig = {
 
   // Development configuration
   development: {
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080', 'https://bff-api.leolicona-dev.workers.dev'],
+    origin: ['http://localhost:3000', 'http://localhost:5173', 'http://localhost:8080', 'https://bff-api.leolicona-dev.workers.dev', 'https://tourist-guide-service.leolicona-dev.workers.dev'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['*'],
     credentials: false,

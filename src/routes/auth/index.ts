@@ -12,37 +12,12 @@ const auth = new Hono<{ Bindings: Env }>()
 
 // Example schema for demonstration
 const loginSchema = z.object({
-  phone: z.string().min(10, 'Phone number must be at least 10 digits'),
-  otp: z.string().length(6, 'OTP must be exactly 6 digits')
+  phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+  redirectUrl: z.string().url('Invalid redirect URL').optional(),
 })
 
-// Example route that demonstrates error handling
-auth.post('/login', zodValidator('json', loginSchema), async (c) => {
-  try {
-    const { phone, otp } = c.req.valid('json')
-    
-    // Simulate validation logic
-    if (phone === '1234567890' && otp === '123456') {
-      return c.json({
-        success: true,
-        message: 'Login successful',
-        token: 'example-jwt-token'
-      })
-    }
-    
-    // Throw HTTPException for invalid credentials
-    throw AuthErrors.INVALID_CREDENTIALS()
-    
-  } catch (error) {
-    // If it's already an HTTPException, re-throw it
-    if (error instanceof HTTPException) {
-      throw error
-    }
-    
-    // For unexpected errors, throw a generic server error
-    throw AuthErrors.DATABASE_ERROR()
-  }
-})
+// Route to initiate login (send magic link)
+auth.post('/login', zodValidator('json', loginSchema), authHandler.login)
 
 // Example route that demonstrates different error types
 auth.get('/profile/:userId', async (c) => {
